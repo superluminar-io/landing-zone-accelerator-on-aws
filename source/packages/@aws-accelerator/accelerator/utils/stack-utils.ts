@@ -977,7 +977,7 @@ export function createNetworkAssociationsStacks(
  * @param accountId
  * @param enabledRegion
  */
-export function createCustomizationsStacks(
+export async function createCustomizationsStacks(
   rootApp: cdk.App,
   context: AcceleratorContext,
   props: AcceleratorStackProps,
@@ -1009,7 +1009,7 @@ export function createCustomizationsStacks(
     cdk.Aspects.of(customizationsStack).add(new AwsSolutionsChecks());
     new AcceleratorAspects(app, context.partition, context.useExistingRoles ?? false);
 
-    createCustomStacks(app, props, env, accountId, enabledRegion);
+    await createCustomStacks(app, props, env, accountId, enabledRegion);
 
     createApplicationsStacks(app, context, props, env, accountId, enabledRegion);
   }
@@ -1136,7 +1136,7 @@ export function saveAseaResourceMapping(
  * @param accountId
  * @param enabledRegion
  */
-function createCustomStacks(
+async function createCustomStacks(
   app: cdk.App,
   props: AcceleratorStackProps,
   env: cdk.Environment,
@@ -1154,18 +1154,39 @@ function createCustomStacks(
     for (const stack of customStackList ?? []) {
       logger.info(`New custom stack ${stack.stackConfig.name}`);
       const customStackName = `${stack.stackConfig.name}-${accountId}-${enabledRegion}`;
-      stack.stackObj = new CustomStack(app, `${customStackName}`, {
-        env,
-        description: stack.stackConfig.description,
-        runOrder: stack.stackConfig.runOrder,
-        stackName: stack.stackConfig.name,
-        synthesizer: getStackSynthesizer(props, accountId, enabledRegion),
-        templateFile: stack.stackConfig.template,
-        terminationProtection: stack.stackConfig.terminationProtection,
-        parameters: stack.stackConfig.parameters,
-        ssmParamNamePrefix: props.prefixes.ssmParamName,
-        ...props,
-      });
+      if (stack.stackConfig.useCDKStack) {
+        stack.stackObj = await import(stack.stackConfig.template).then(m => {
+          const stackClass = m[stack.stackConfig.name];
+          if (typeof stackClass !== CustomStack) {
+            throw new Error(`Stack ${stack.stackConfig.name} needs to extends CustomStack to be used here`);
+          }
+          new stackClass(app, `${customStackName}`, {
+            env,
+            description: stack.stackConfig.description,
+            runOrder: stack.stackConfig.runOrder,
+            stackName: stack.stackConfig.name,
+            synthesizer: getStackSynthesizer(props, accountId, enabledRegion),
+            templateFile: stack.stackConfig.template,
+            terminationProtection: stack.stackConfig.terminationProtection,
+            parameters: stack.stackConfig.parameters,
+            ssmParamNamePrefix: props.prefixes.ssmParamName,
+            ...props,
+          });
+        });
+      } else {
+        stack.stackObj = new CustomStack(app, `${customStackName}`, {
+          env,
+          description: stack.stackConfig.description,
+          runOrder: stack.stackConfig.runOrder,
+          stackName: stack.stackConfig.name,
+          synthesizer: getStackSynthesizer(props, accountId, enabledRegion),
+          templateFile: stack.stackConfig.template,
+          terminationProtection: stack.stackConfig.terminationProtection,
+          parameters: stack.stackConfig.parameters,
+          ssmParamNamePrefix: props.prefixes.ssmParamName,
+          ...props,
+        });
+      }
       // Create stack dependencies as needed
       addCustomStackDependencies(stack, stack.stackObj, customStackList);
     }

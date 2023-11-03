@@ -136,7 +136,11 @@ function createSingleAccountMultiRegionStacks(
  * @param context
  * @param props
  */
-function createMultiAccountMultiRegionStacks(app: cdk.App, context: AcceleratorContext, props: AcceleratorStackProps) {
+async function createMultiAccountMultiRegionStacks(
+  app: cdk.App,
+  context: AcceleratorContext,
+  props: AcceleratorStackProps,
+) {
   const aseaResources: AseaResourceMapping[] = [];
   for (const enabledRegion of props.globalConfig.enabledRegions) {
     let accountId = '';
@@ -184,7 +188,7 @@ function createMultiAccountMultiRegionStacks(app: cdk.App, context: AcceleratorC
       createNetworkAssociationsStacks(app, context, props, env, accountId, enabledRegion);
       //
       // All CUSTOMIZATIONS stage stacks
-      createCustomizationsStacks(app, context, props, env, accountId, enabledRegion);
+      await createCustomizationsStacks(app, context, props, env, accountId, enabledRegion);
     }
   }
 
@@ -229,7 +233,7 @@ async function main() {
     createSingleAccountMultiRegionStacks(app, context, props, managementAccountId, auditAccountId);
     //
     // All remaining stacks
-    createMultiAccountMultiRegionStacks(app, context, props);
+    await createMultiAccountMultiRegionStacks(app, context, props);
   }
 
   logger.info('End Accelerator CDK App');

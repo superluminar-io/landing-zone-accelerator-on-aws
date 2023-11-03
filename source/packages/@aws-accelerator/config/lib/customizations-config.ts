@@ -342,6 +342,7 @@ export class CustomizationsConfigTypes {
     template: t.nonEmptyString,
     parameters: t.optional(t.array(t.cfnParameter)),
     terminationProtection: t.boolean,
+    useCDKStack: t.optional(t.boolean),
   });
 
   static readonly cloudFormationStackSet = t.interface({
@@ -1027,6 +1028,10 @@ export class CloudFormationStackConfig implements t.TypeOf<typeof Customizations
    * The parameters to pass to the stack.
    */
   readonly parameters: t.CfnParameter[] | undefined = undefined;
+  /**
+   * This determines whether the template is to be treated as a CDK stack.
+   */
+  readonly useCDKStack: boolean = false;
 }
 
 /**
